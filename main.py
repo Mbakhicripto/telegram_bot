@@ -1,55 +1,48 @@
 import os
 import json
 import asyncio
-import threading  # وارد کردن threading برای اجرای سرور وب در نخ جدا
+import threading
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# گرفتن توکن از محیط (Render Env Vars)
+# گرفتن توکن از محیط
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# تنظیم URL برای Webhook
+# ساخت URL وب‌هوک
 WEBHOOK_URL = f"https://tele1388-bot.onrender.com/{BOT_TOKEN}"
 
-# تابع /start
-async def start(update: Update, context):
-    await update.message.reply_text("سلام! ربات با موفقیت روی Render در حال اجراست.")
-
-# ایجاد و تنظیم Flask برای Webhook
+# Flask app برای پاسخ‌دهی به Webhook
 app = Flask(__name__)
 
-@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+# متغیر سراسری برای application (داخل set_webhook مقدار می‌گیره)
+application = None
+
+# هندلر دستور /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ ربات با موفقیت روی Render اجرا شده است!")
+
+# مسیری که Telegram برای Webhook به آن پیام می‌فرستد
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = Update.de_json(json.loads(json_str), application.bot)
-    application.update_queue.put(update)
-    return "OK", 200
+    json_data = request.get_data().decode("utf-8")
+    update = Update.de_json(json.loads(json_data), application.bot)
+    asyncio.create_task(application.process_update(update))
+    return "OK"
 
+# اجرای Flask در نخ جداگانه
 def run_web():
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host="0.0.0.0", port=10000)
 
+# راه‌اندازی ربات و ثبت Webhook
 async def set_webhook():
-    # راه‌اندازی ربات
+    global application
     application = Application.builder().token(BOT_TOKEN).build()
-
-    # تنظیم Webhook
+    application.add_handler(CommandHandler("start", start))
     await application.bot.set_webhook(WEBHOOK_URL)
 
-    # اضافه کردن handler برای دستور start
-    application.add_handler(CommandHandler("start", start))
-
-    # اجرای ربات
-    await application.initialize()
-    await application.start_polling()
-    await application.idle()
-
-    await application.stop()
-    await application.shutdown()
-
-if __name__ == '__main__':
-    # اجرای وب‌سرور در نخ جدا برای Render
+if __name__ == "__main__":
+    # اجرای سرور Flask در نخ جدا
     threading.Thread(target=run_web).start()
-
-    # تنظیم Webhook و شروع ربات
+    # راه‌اندازی Webhook و ربات
     asyncio.run(set_webhook())
