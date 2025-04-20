@@ -1,48 +1,35 @@
 import os
-import threading
 import asyncio
-import logging
 from flask import Flask
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# لاگ‌گیری فعال
-logging.basicConfig(level=logging.INFO)
-
-# گرفتن توکن از محیط (Render Env Vars)
+# توکن از محیط
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("❌ توکن BOT_TOKEN تنظیم نشده!")
+print(f"🎯 توکن: {BOT_TOKEN[:10]}...")
 
-# تابع /start
+# ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"📩 دریافت شد از {update.effective_user.username}: {update.message.text}")
-    await update.message.reply_text("سلام! ربات با موفقیت روی Render اجرا شد ✅")
+    print("✅ دریافت شد: /start")
+    await update.message.reply_text("سلام! ربات فعاله :)")
 
-# اجرای وب‌سرور ساده برای Render (فقط برای اینکه پورت باز باشه)
+# وب سرور
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "ربات در حال اجراست! ✅"
+    return "ربات در حال اجراست ✅"
 
-def run_web():
-    app.run(host='0.0.0.0', port=10000)
-
-# اجرای ربات تلگرام
 async def main():
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
+    app_tg = Application.builder().token(BOT_TOKEN).build()
+    app_tg.add_handler(CommandHandler("start", start))
 
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    await application.updater.idle()
+    await app_tg.initialize()
+    await app_tg.start()
+    await app_tg.updater.start_polling()
+    await app_tg.updater.idle()
 
-if __name__ == '__main__':
-    threading.Thread(target=run_web).start()
+if __name__ == "__main__":
+    from threading import Thread
+    Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
     asyncio.run(main())
