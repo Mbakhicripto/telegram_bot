@@ -1,57 +1,54 @@
 import os
+import json
+import asyncio
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler
 
-# توکن از محیط
+# گرفتن توکن از محیط (Render Env Vars)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_SECRET_PATH = BOT_TOKEN  # برای امنیت بیشتر می‌تونی چیز دیگه‌ای بزاری
-WEBHOOK_URL = f"https://YOUR_RENDER_DOMAIN.onrender.com/{WEBHOOK_SECRET_PATH}"
 
-# ---- Flask برای سلامت ----
+# تنظیم URL برای Webhook
+WEBHOOK_URL = f"https://tele1388-bot.onrender.com/{BOT_TOKEN}"
+
+# تابع /start
+async def start(update: Update, context):
+    await update.message.reply_text("سلام! ربات با موفقیت روی Render در حال اجراست.")
+
+# ایجاد و تنظیم Flask برای Webhook
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return 'ربات در حال اجراست ✅'
-
-@app.route(f'/{WEBHOOK_SECRET_PATH}', methods=['POST'])
+@app.route(f'/{BOT_TOKEN}', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
-    return 'ok'
+    json_str = request.get_data().decode('UTF-8')
+    update = Update.de_json(json.loads(json_str), application.bot)
+    application.update_queue.put(update)
+    return "OK", 200
 
-# ---- ربات ----
-application = Application.builder().token(BOT_TOKEN).build()
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! ربات شما با موفقیت روی Render راه‌اندازی شد.")
-
-application.add_handler(CommandHandler("start", start))
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
 
 async def set_webhook():
+    # راه‌اندازی ربات
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    # تنظیم Webhook
     await application.bot.set_webhook(WEBHOOK_URL)
 
-# ---- اجرای همه چیز ----
+    # اضافه کردن handler برای دستور start
+    application.add_handler(CommandHandler("start", start))
+
+    # اجرای ربات
+    await application.initialize()
+    await application.start_polling()
+    await application.idle()
+
+    await application.stop()
+    await application.shutdown()
+
 if __name__ == '__main__':
-    import asyncio
-    import threading
+    # اجرای وب‌سرور در نخ جدا برای Render
+    threading.Thread(target=run_web).start()
 
-    # اجرای Flask در یک Thread
-    def run_flask():
-        app.run(host='0.0.0.0', port=10000)
-
-    threading.Thread(target=run_flask).start()
-
-    # اجرای Webhook
+    # تنظیم Webhook و شروع ربات
     asyncio.run(set_webhook())
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=10000,
-        webhook_url=WEBHOOK_URL,
-        secret_token=WEBHOOK_SECRET_PATH,
-    )
