@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # ساخت URL وب‌هوک
-WEBHOOK_URL = f"https://tele1388-bot.onrender.com/{BOT_TOKEN}"
+WEBHOOK_URL = f"https://tele1388_bot.onrender.com/{BOT_TOKEN}"
 
 # Flask app برای پاسخ‌دهی به Webhook
 app = Flask(__name__)
