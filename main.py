@@ -2,6 +2,21 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram import Update
 import os
 import asyncio
+# در بالای فایل main.py اضافه کن:
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+# و قبل از اجرای ربات:
+threading.Thread(target=run_web).start()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
