@@ -7,86 +7,51 @@ from telegram.ext import (
     ContextTypes,
 )
 
+# توکن از محیط
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-BOT_USERNAME = "tele1388_bot"
-WEBHOOK_PATH = f"/{BOT_TOKEN}"
-WEBHOOK_URL = f"https://your-render-service.onrender.com{WEBHOOK_PATH}"  # اینو با آدرس رندر خودت جایگزین کن
+WEBHOOK_SECRET_PATH = BOT_TOKEN  # برای امنیت بیشتر می‌تونی چیز دیگه‌ای بزاری
+WEBHOOK_URL = f"https://YOUR_RENDER_DOMAIN.onrender.com/{WEBHOOK_SECRET_PATH}"
 
+# ---- Flask برای سلامت ----
 app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return 'ربات در حال اجراست ✅'
+
+@app.route(f'/{WEBHOOK_SECRET_PATH}', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return 'ok'
+
+# ---- ربات ----
 application = Application.builder().token(BOT_TOKEN).build()
 
-@app.route("/")
-def home():
-    return "ربات آماده است ✅"
-
-@app.post(WEBHOOK_PATH)
-async def webhook() -> str:
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
-    return "ok"
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! ربات با موفقیت از طریق Webhook راه‌اندازی شد ✅")
+    await update.message.reply_text("سلام! ربات شما با موفقیت روی Render راه‌اندازی شد.")
 
-# ثبت دستور
 application.add_handler(CommandHandler("start", start))
 
-# راه‌اندازی Webhook
 async def set_webhook():
     await application.bot.set_webhook(WEBHOOK_URL)
 
-if __name__ == "__main__":
-    import threading
+# ---- اجرای همه چیز ----
+if __name__ == '__main__':
     import asyncio
-
-    # اجرای Flask
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
-
-    # ثبت وب‌هوک و اجرای ربات
-    asyncio.run(set_webhook())
-import os
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-BOT_USERNAME = "tele1388_bot"
-WEBHOOK_PATH = f"/{BOT_TOKEN}"
-WEBHOOK_URL = f"https://your-render-service.onrender.com{WEBHOOK_PATH}"  # اینو با آدرس رندر خودت جایگزین کن
-
-app = Flask(__name__)
-application = Application.builder().token(BOT_TOKEN).build()
-
-@app.route("/")
-def home():
-    return "ربات آماده است ✅"
-
-@app.post(WEBHOOK_PATH)
-async def webhook() -> str:
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
-    return "ok"
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! ربات با موفقیت از طریق Webhook راه‌اندازی شد ✅")
-
-# ثبت دستور
-application.add_handler(CommandHandler("start", start))
-
-# راه‌اندازی Webhook
-async def set_webhook():
-    await application.bot.set_webhook(WEBHOOK_URL)
-
-if __name__ == "__main__":
     import threading
-    import asyncio
 
-    # اجرای Flask
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
+    # اجرای Flask در یک Thread
+    def run_flask():
+        app.run(host='0.0.0.0', port=10000)
 
-    # ثبت وب‌هوک و اجرای ربات
+    threading.Thread(target=run_flask).start()
+
+    # اجرای Webhook
     asyncio.run(set_webhook())
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=10000,
+        webhook_url=WEBHOOK_URL,
+        secret_token=WEBHOOK_SECRET_PATH,
+    )
