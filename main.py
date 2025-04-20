@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import threading  # وارد کردن threading برای اجرای سرور وب در نخ جدا
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler
