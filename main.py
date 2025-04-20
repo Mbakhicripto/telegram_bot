@@ -1,6 +1,7 @@
 import os
 import threading
 import asyncio
+import logging
 from flask import Flask
 from telegram import Update
 from telegram.ext import (
@@ -9,12 +10,18 @@ from telegram.ext import (
     ContextTypes,
 )
 
+# لاگ‌گیری فعال
+logging.basicConfig(level=logging.INFO)
+
 # گرفتن توکن از محیط (Render Env Vars)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("❌ توکن BOT_TOKEN تنظیم نشده!")
 
 # تابع /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! ربات با موفقیت روی Render اجرا شد 😎")
+    print(f"📩 دریافت شد از {update.effective_user.username}: {update.message.text}")
+    await update.message.reply_text("سلام! ربات با موفقیت روی Render اجرا شد ✅")
 
 # اجرای وب‌سرور ساده برای Render (فقط برای اینکه پورت باز باشه)
 app = Flask(__name__)
@@ -28,22 +35,14 @@ def run_web():
 
 # اجرای ربات تلگرام
 async def main():
-    # راه‌اندازی ربات
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
 
-    # اجرا در حالت polling
     await application.initialize()
     await application.start()
     await application.updater.start_polling()
     await application.updater.idle()
 
-    await application.stop()
-    await application.shutdown()
-
 if __name__ == '__main__':
-    # اجرای وب‌سرور در نخ جدا برای Render
     threading.Thread(target=run_web).start()
-
-    # اجرای async main
     asyncio.run(main())
