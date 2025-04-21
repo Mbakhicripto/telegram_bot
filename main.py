@@ -1,45 +1,36 @@
 import os
-import asyncio
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# توکن ربات
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # یا مستقیماً: "8084:..."
 
-# ساخت اپ Flask
+WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
+WEBHOOK_URL = f"https://your-railway-subdomain.up.railway.app{WEBHOOK_PATH}"  # آدرس Railway
+
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "ربات در حال اجراست ✅"
+    return "ربات تلگرام روی Railway اجرا می‌شود ✅"
 
-# مسیر دریافت آپدیت‌های تلگرام
-@app.route(f'/webhook/{BOT_TOKEN}', methods=['POST'])
-async def webhook():
+@app.route(WEBHOOK_PATH, methods=["POST"])
+def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
-    return 'ok'
+    application.update_queue.put(update)
+    return "OK"
 
-# پاسخ به /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! ربات با موفقیت راه‌اندازی شد ✅")
+    await update.message.reply_text("سلام! ربات روی Railway فعاله ✅")
 
-# راه‌اندازی بات
 application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
-# راه‌اندازی webhook
-async def set_webhook():
-    webhook_url = f"https://tele1388-bot.onrender.com/webhook/{BOT_TOKEN}"
-    await application.bot.set_webhook(webhook_url)
+async def run_bot():
+    await application.initialize()
+    await application.bot.set_webhook(WEBHOOK_URL)
+    await application.start()
 
-if __name__ == '__main__':
-    # ست کردن وبهوک
-    asyncio.run(set_webhook())
-    # اجرای سرور
-    app.run(host="0.0.0.0", port=10000)
+import threading, asyncio
+threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8000)).start()
+asyncio.run(run_bot())
